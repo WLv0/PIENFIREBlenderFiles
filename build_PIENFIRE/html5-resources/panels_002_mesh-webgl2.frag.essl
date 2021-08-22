@@ -1,0 +1,65 @@
+#version 300 es
+precision mediump float;
+precision highp int;
+
+uniform highp sampler2D ImageTexture;
+
+in highp vec3 wnormal;
+in highp vec2 texCoord;
+out highp vec4 fragColor[2];
+
+highp vec2 octahedronWrap(highp vec2 v)
+{
+    return (vec2(1.0) - abs(v.yx)) * vec2((v.x >= 0.0) ? 1.0 : (-1.0), (v.y >= 0.0) ? 1.0 : (-1.0));
+}
+
+highp float packFloatInt16(highp float f, uint i)
+{
+    return (0.06248569488525390625 * f) + (0.06250095367431640625 * float(i));
+}
+
+highp float packFloat2(highp float f1, highp float f2)
+{
+    return floor(f1 * 255.0) + min(f2, 0.9900000095367431640625);
+}
+
+void main()
+{
+    highp vec3 n = normalize(wnormal);
+    highp vec4 ImageTexture_texread_store = texture(ImageTexture, texCoord);
+    highp float ImageTexture_Alpha_res = ImageTexture_texread_store.w;
+    highp float MixShader_fac = ImageTexture_Alpha_res;
+    highp float MixShader_fac_inv = 1.0 - MixShader_fac;
+    highp vec3 ImageTexture_Color_res = ImageTexture_texread_store.xyz;
+    highp vec3 basecol = (vec3(0.800000011920928955078125) * MixShader_fac_inv) + (ImageTexture_Color_res * MixShader_fac);
+    highp float roughness = (0.0 * MixShader_fac_inv) + (0.0 * MixShader_fac);
+    highp float metallic = (0.0 * MixShader_fac_inv) + (0.0 * MixShader_fac);
+    highp float occlusion = (1.0 * MixShader_fac_inv) + (1.0 * MixShader_fac);
+    highp float specular = (1.0 * MixShader_fac_inv) + (1.0 * MixShader_fac);
+    highp float emission = (0.0 * MixShader_fac_inv) + (1.0 * MixShader_fac);
+    highp float opacity = ((0.0 * MixShader_fac_inv) + (1.0 * MixShader_fac)) - 0.00019999999494757503271102905273438;
+    if (opacity < 0.99989998340606689453125)
+    {
+        discard;
+    }
+    n /= vec3((abs(n.x) + abs(n.y)) + abs(n.z));
+    highp vec2 _163;
+    if (n.z >= 0.0)
+    {
+        _163 = n.xy;
+    }
+    else
+    {
+        _163 = octahedronWrap(n.xy);
+    }
+    n = vec3(_163.x, _163.y, n.z);
+    uint matid = 0u;
+    if (emission > 0.0)
+    {
+        basecol *= emission;
+        matid = 1u;
+    }
+    fragColor[0] = vec4(n.xy, roughness, packFloatInt16(metallic, matid));
+    fragColor[1] = vec4(basecol, packFloat2(occlusion, specular));
+}
+
